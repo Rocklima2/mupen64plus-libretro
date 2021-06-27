@@ -844,7 +844,7 @@ TxQuantize::quantize(uint8* src, uint8* dest, int width, int height, uint16 srcf
 		}
 		if (blkrow > 0 && numcore > 1) {
 #ifndef HAVE_LIBNX
-			std::thread *thrd[MAX_NUMCORE];
+			std::thread *thrd[numcore];
 #endif
 			unsigned int i;
 			int blkheight = blkrow << 2;
@@ -904,7 +904,7 @@ TxQuantize::quantize(uint8* src, uint8* dest, int width, int height, uint16 srcf
 		}
 		if (blkrow > 0 && numcore > 1) {
 #ifndef HAVE_LIBNX
-			std::thread *thrd[MAX_NUMCORE];
+			std::thread *thrd[numcore];
 #endif
 			unsigned int i;
 			int blkheight = blkrow << 2;

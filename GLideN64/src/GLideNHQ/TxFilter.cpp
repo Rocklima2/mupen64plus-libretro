@@ -300,7 +300,7 @@ TxFilter::filter(uint8 *src, int srcwidth, int srcheight, uint16 srcformat, uint
 				}
 				if (blkrow > 0 && numcore > 1) {
 #ifndef HAVE_LIBNX
-					std::thread *thrd[MAX_NUMCORE];
+					std::thread *thrd[numcore];
 #endif
 					unsigned int i;
 					int blkheight = blkrow << 2;
