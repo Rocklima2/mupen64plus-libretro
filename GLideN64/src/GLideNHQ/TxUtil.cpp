@@ -522,7 +522,7 @@ TxUtil::getNumberofProcessors()
 		DBG_INFO(80, wst("Error: number of processor detection failed!\n"));
 	}
 
-	if (numcore > MAX_NUMCORE) numcore = MAX_NUMCORE;
+
 #endif // ANDROID
 	DBG_INFO(80, wst("Number of processors : %d\n"), numcore);
 
