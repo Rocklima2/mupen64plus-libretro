@@ -876,6 +876,8 @@ static void open_eep_file(struct storage_file* storage)
 /*********************************************************************************************************
 * emulation thread - runs the core
 */
+uint32_t rdram_size;
+
 m64p_error main_run(void)
 {
     size_t i;
@@ -908,6 +910,12 @@ m64p_error main_run(void)
 #endif
     g_delay_si = ConfigGetParamBool(g_CoreConfig, "DelaySI");
     disable_extra_mem = ConfigGetParamInt(g_CoreConfig, "DisableExtraMem");
+
+    if (ForceDisableExtraMem == 1)
+        disable_extra_mem = 1;
+
+    rdram_size = (disable_extra_mem == 0) ? 0x800000 : 0x400000;
+
     count_per_op = ConfigGetParamInt(g_CoreConfig, "CountPerOp");
     if (count_per_op <= 0)
         count_per_op = ROM_PARAMS.countperop;
@@ -947,7 +955,7 @@ m64p_error main_run(void)
                 g_rom, g_rom_size,
                 storage_file_ptr(&fla, 0), &fla_storage,
                 storage_file_ptr(&sra, 0), &sra_storage,
-                g_rdram, (disable_extra_mem == 0) ? 0x800000 : 0x400000,
+                g_rdram, rdram_size,
                 cins,
                 mpk_data, mpk_storages,
                 rumbles,

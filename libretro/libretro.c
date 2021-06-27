@@ -102,6 +102,7 @@ uint32_t EnableFragmentDepthWrite = 0;
 uint32_t EnableShadersStorage = 0;
 uint32_t CropMode = 0;
 uint32_t EnableFBEmulation = 0;
+uint32_t ForceDisableExtraMem = 0;
 uint32_t CountPerOp = 0;
 
 int rspMode = 0;
@@ -215,6 +216,8 @@ static void setup_variables(void)
            "Down C Button; C3|C4|C1|C2"},
         {"mupen64plus-u-cbutton",
            "Up C Button; C4|C1|C2|C3"},
+        {"mupen64plus-ForceDisableExtraMem",
+           "Disable Expansion Pak; False|True"},
         {"mupen64plus-pak1",
            "Player 1 Pak; memory|rumble|none"},
         {"mupen64plus-pak2",
@@ -827,6 +830,14 @@ void update_variables()
         else if (!strcmp(var.value, "C4"))
             u_cbutton = RETRO_DEVICE_ID_JOYPAD_X;
     }
+
+    var.key = "mupen64plus-ForceDisableExtraMem";
+    var.value = NULL;
+    if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+    {
+        ForceDisableExtraMem = !strcmp(var.value, "False") ? 0 : 1;
+    }
+
     update_controllers();
 }
 
