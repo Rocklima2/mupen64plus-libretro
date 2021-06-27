@@ -1,6 +1,7 @@
 # Important Notice:
 
-Core to rpi3 I'm porting solutions from another fork to this one only
+Core to rpi3 I'm porting solutions from another fork to this one only.
+"All ported code has the author and the link from which it was taken, giving due credit to its creators"
 
 ## This core is deprecated and will no longer be maintained.
 
