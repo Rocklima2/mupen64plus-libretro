@@ -1,4 +1,7 @@
 # Important Notice:
+
+Core to rpi3 I'm porting solutions from another fork to this one only
+
 ## This core is deprecated and will no longer be maintained.
 
 Please use https://github.com/libretro/mupen64plus-libretro-nx
