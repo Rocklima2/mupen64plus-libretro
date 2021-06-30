@@ -316,13 +316,15 @@ SOURCES_CXX   += \
 
 ifneq (,$(findstring rpi3,$(platform)))
 	SOURCES_CXX += $(VIDEODIR_GLIDEN64)/src/CRC32_ARMV8.cpp
+else ifeq ($(HAVE_NEON),1)
+	SOURCES_CXX += $(VIDEODIR_GLIDEN64)/src/Neon/CRC_OPT_NEON.cpp
 else
 	SOURCES_CXX += $(ROOT_DIR)/custom/GLideN64/CRC.cpp
 endif
 
 ifeq ($(HAVE_NEON),1)
-	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/3DMathNeon.cpp \
-						  $(VIDEODIR_GLIDEN64)/src/gSPNeon.cpp
+	SOURCES_CXX   += $(VIDEODIR_GLIDEN64)/src/Neon/3DMathNeon.cpp \
+						  $(VIDEODIR_GLIDEN64)/src/Neon/gSPNeon.cpp
 
 	SOURCES_ASM += $(LIBRETRO_COMM_DIR)/audio/conversion/float_to_s16_neon.S \
 						$(LIBRETRO_COMM_DIR)/audio/conversion/s16_to_float_neon.S \
