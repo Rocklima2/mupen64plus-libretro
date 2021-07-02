@@ -106,7 +106,7 @@ else ifneq (,$(findstring rpi,$(platform)))
    endif
    WITH_DYNAREC=arm
    ifneq (,$(findstring rpi2,$(platform)))
-      CPUFLAGS += -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+      CPUFLAGS += -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -DVC
       HAVE_NEON = 1
    else ifneq (,$(findstring rpi3,$(platform)))
       CPUFLAGS += -march=armv8-a+crc -mtune=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
