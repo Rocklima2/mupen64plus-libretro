@@ -300,6 +300,8 @@ void FrameBuffer::resolveMultisampledTexture(bool _bForce)
 #ifdef GL_MULTISAMPLING_SUPPORT
 	if (m_resolved && !_bForce)
 		return;
+	if (!m_pResolveTexture)
+		return;
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, m_FBO);
 	glReadBuffer(GL_COLOR_ATTACHMENT0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_resolveFBO);
