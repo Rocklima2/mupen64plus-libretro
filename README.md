@@ -2,9 +2,6 @@
 
 "All ported code has the author and the link from which it was taken, giving due credit to its creators"
 
-## This core is deprecated and will no longer be maintained.
-
-Please use https://github.com/libretro/mupen64plus-libretro-nx
 
 # Mupen64Plus
 
