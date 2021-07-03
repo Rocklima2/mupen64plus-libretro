@@ -527,11 +527,11 @@ void TextureCache::destroy()
 void TextureCache::_checkCacheSize()
 {
 #if defined(VC) || defined(CLASSIC)
-	const size_t maxCacheSize = 15000;
+	const size_t maxCacheSize = 1500;
 #elif defined(HAVE_LIBNX)
 	const size_t maxCacheSize = 4500;
 #else
-	const size_t maxCacheSize = 16384;
+	const size_t maxCacheSize = 8000;
 #endif
 	if (m_textures.size() >= maxCacheSize) {
 		CachedTexture& clsTex = m_textures.back();
