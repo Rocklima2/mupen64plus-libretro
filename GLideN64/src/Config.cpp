@@ -58,8 +58,13 @@ void Config::resetToDefaults()
 	generalEmulation.polygonOffsetUnits = 0.0f;
 #endif
 
+#if defined(VC) || defined(CLASSIC)
+	frameBufferEmulation.enable = 0;
+	frameBufferEmulation.copyDepthToRDRAM = 0;
+#else
 	frameBufferEmulation.enable = 1;
 	frameBufferEmulation.copyDepthToRDRAM = cdSoftwareRender;
+#endif
 	frameBufferEmulation.copyFromRDRAM = 0;
 	frameBufferEmulation.copyAuxToRDRAM = 0;
 	frameBufferEmulation.copyToRDRAM = ctAsync;
