@@ -114,6 +114,16 @@ void InverseTransformVectorNormalize(float src[3], float dst[3], float mtx[4][4]
     );
 }
 
+void CopyMatrix( float m0[4][4], float m1[4][4] )
+{
+    asm volatile (
+    "    vldm.32         %1, {q0-q3}                \n\t"    //load 16 floats in four neon quad registers
+    "    vstm.32         %0, {q0-q3}                \n\t"    //store 16 floats 
+    : "+r"(m0), "+r"(m1) :
+    : "d0","d1","d2","d3","d4","d5","d6","d7", "memory"
+    );
+}
+
 void Normalize(float v[3])
 {
 	asm volatile (
