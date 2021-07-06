@@ -44,5 +44,3 @@ inline float DotProduct(const float v0[3], const float v1[3])
 }
 
 #endif
-
-#endif
