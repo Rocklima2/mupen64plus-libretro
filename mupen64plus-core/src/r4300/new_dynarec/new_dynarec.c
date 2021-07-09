@@ -6459,7 +6459,16 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
 
   //FIXME: Check CSREG
   if(opcode[i]==0x11 && opcode2[i]==0x08 ) {
-    if((source[i]&0x30000)==0) // BC1F
+    if(!cop1_usable) {
+      signed char cs=get_reg(i_regs->regmap,CSREG);
+      assert(cs>=0);
+      emit_testimm(cs,CP0_STATUS_CU1);
+      int jaddr=(int)out;
+      emit_jeq(0);
+      add_stub(FP_STUB,jaddr,(int)out,i,cs,(int)i_regs,0,0);
+      cop1_usable=1;
+    }
+	if((source[i]&0x30000)==0) // BC1F
     {
       emit_mov2imm_compact(ba[i],addr,start+i*4+8,alt);
       emit_testimm(s1l,0x800000);
