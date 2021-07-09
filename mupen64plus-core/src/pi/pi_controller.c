@@ -116,7 +116,7 @@ static void dma_pi_write(struct pi_controller* pi)
         return;
     }
 
-    longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFF)+1;
+    longueur = (pi->regs[PI_WR_LEN_REG] & 0xFFFFFE)+2;
     dram_address = pi->regs[PI_DRAM_ADDR_REG] & 0x7FFFFF;
     rom_address = (pi->regs[PI_CART_ADDR_REG] - 0x10000000) & 0x3ffffff;
     dram = (uint8_t*)pi->ri->rdram.dram;
