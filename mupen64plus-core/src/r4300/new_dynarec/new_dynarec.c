@@ -6211,6 +6211,7 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
   int s2h=get_reg(i_regs->regmap,rs2[i]|64);
   int taken=0;
   int nottaken=0;
+  int nottaken1=0;
   int unconditional=0;
   if(rs1[i]==0)
   {
@@ -6308,10 +6309,12 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
       if(s1h>=0) {
         if(s2h>=0) emit_cmp(s1h,s2h);
         else emit_test(s1h,s1h);
+		nottaken1=(int)out;
         emit_cmovne_reg(alt,addr);
       }
       if(s2l>=0) emit_cmp(s1l,s2l);
       else emit_test(s1l,s1l);
+	  nottaken=(int)out;
       emit_cmovne_reg(alt,addr);
     }
   }
@@ -6392,13 +6395,67 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
   }
   if((opcode[i]&0x3f)==0x16) // BLEZL
   {
-    assert((opcode[i]&0x3f)!=0x16);
+    //assert((opcode[i]&0x3f)!=0x16);
+	if(s1h>=0) {
+      emit_test(s1h,s1h);
+      taken=(int)out;
+      emit_js(0);
+      nottaken1=(int)out;
+      emit_jne(0);
+    }
+    emit_cmpimm(s1l,1);
+    nottaken=(intptr_t)out;
+    if(s1h>=0) emit_jae(0);
+    else emit_jge(0);
+    if(taken) set_jump_target(taken,(int)out);
+   
   }
   if((opcode[i]&0x3f)==0x17) // BGTZL
   {
-    assert((opcode[i]&0x3f)!=0x17);
+    //assert((opcode[i]&0x3f)!=0x17);
+	if(s1h>=0) {
+      emit_test(s1h,s1h);
+      nottaken1=(int)out;
+      emit_js(0);
+      taken=(intptr_t)out;
+      emit_jne(0);
+    }
+    emit_cmpimm(s1l,1);
+    nottaken=(int)out;
+    if(s1h>=0) emit_jb(0);
+    else emit_jl(0);
+    if(taken) set_jump_target(taken,(int)out);
   }
-  assert(opcode[i]!=1); // BLTZ/BGEZ
+  
+  if((opcode[i]==1)&&(opcode2[i]==0)) // BLTZ
+  {
+    emit_mov2imm_compact(ba[i],alt,start+i*4+8,addr);
+    if(s1h>=0) emit_test(s1h,s1h);
+    else emit_test(s1l,s1l);
+    emit_cmovs_reg(alt,addr);
+  }
+  if((opcode[i]==1)&&(opcode2[i]==1)) // BGEZ
+  {
+    emit_mov2imm_compact(ba[i],addr,start+i*4+8,alt);
+    if(s1h>=0) emit_test(s1h,s1h);
+    else emit_test(s1l,s1l);
+    emit_cmovs_reg(alt,addr);
+  }
+  if((opcode[i]==1)&&(opcode2[i]==2)) // BLTZL
+  {
+    if(s1h>=0) emit_test(s1h,s1h);
+    else emit_test(s1l,s1l);
+    nottaken=(int)out;
+    emit_jns(0);
+  }
+  if((opcode[i]==1)&&(opcode2[i]==3)) // BGEZL
+  {
+    if(s1h>=0) emit_test(s1h,s1h);
+    else emit_test(s1l,s1l);
+    nottaken=(int)out;
+    emit_js(0);
+  }
+  //assert(opcode[i]!=1); // BLTZ/BGEZ
 
   //FIXME: Check CSREG
   if(opcode[i]==0x11 && opcode2[i]==0x08 ) {
@@ -6451,7 +6508,8 @@ static void pagespan_assemble(int i,struct regstat *i_regs)
   else set_jump_target((int)branch_addr,(int)stub);
   if(likely[i]) {
     // Not-taken path
-    set_jump_target((int)nottaken,(int)out);
+    if(nottaken1) set_jump_target((int)nottaken1,(int)out);
+	set_jump_target((int)nottaken,(int)out);
     wb_dirtys(regs[i].regmap,regs[i].is32,regs[i].dirty);
     void *branch_addr=out;
     emit_jmp(0);
