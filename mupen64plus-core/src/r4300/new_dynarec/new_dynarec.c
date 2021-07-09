@@ -8694,7 +8694,8 @@ int new_recompile_block(int addr)
                 regs[i].regmap_entry[hr]=-1;
                 regs[i].regmap[hr]=-1;
                 //Don't clear regs in the delay slot as the branch might need them
-                //current.regmap[hr]=-1;
+                if(!ooo[i-1])
+                    current.regmap[hr]=-1;
               }else
                 regs[i].regmap_entry[hr]=r;
             }
@@ -8703,7 +8704,8 @@ int new_recompile_block(int addr)
                 regs[i].regmap_entry[hr]=-1;
                 regs[i].regmap[hr]=-1;
                 //Don't clear regs in the delay slot as the branch might need them
-                //current.regmap[hr]=-1;
+                if(!ooo[i-1])
+                    current.regmap[hr]=-1;
               }else
                 regs[i].regmap_entry[hr]=r;
             }
