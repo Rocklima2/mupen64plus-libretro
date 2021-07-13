@@ -5134,18 +5134,20 @@ static void ujump_assemble(int i,struct regstat *i_regs)
   if(rt1[i]==31&&temp>=0) emit_prefetchreg(temp);
   #endif
   do_cc(i,branch_regs[i].regmap,&adj,ba[i],TAKEN,0);
-  if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
-  load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
-  if(internal_branch(branch_regs[i].is32,ba[i]))
-    assem_debug("branch: internal");
-  else
-    assem_debug("branch: external");
-  if(internal_branch(branch_regs[i].is32,ba[i])&&is_ds[(ba[i]-start)>>2]) {
-    ds_assemble_entry(i);
-  }
-  else {
-    add_to_linker((int)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
-    emit_jmp(0);
+  if(i!=(ba[i]-start)>>2 || source[i+1]!=0) {
+    if(adj) emit_addimm(cc,CLOCK_DIVIDER*(ccadj[i]+2-adj),cc);
+    load_regs_bt(branch_regs[i].regmap,branch_regs[i].is32,branch_regs[i].dirty,ba[i]);
+    if(internal_branch(branch_regs[i].is32,ba[i]))
+      assem_debug("branch: internal");
+    else
+      assem_debug("branch: external");
+    if(internal_branch(branch_regs[i].is32,ba[i])&&is_ds[(ba[i]-start)>>2]) {
+      ds_assemble_entry(i);
+    }
+    else {
+      add_to_linker((intptr_t)out,ba[i],internal_branch(branch_regs[i].is32,ba[i]));
+      emit_jmp(0);
+    }
   }
 }
 
@@ -9790,7 +9792,9 @@ int new_recompile_block(int addr)
                   //DebugMessage(M64MSG_VERBOSE, "Hit %x -> %x, %x %d/%d",start+i*4,ba[i],start+j*4,hr,r);
                   int k;
                   if(regs[i].regmap[hr]==-1&&branch_regs[i].regmap[hr]==-1) {
-                    if(get_reg(regs[i+2].regmap,f_regmap[hr])>=0) break;
+                    if(get_reg(regs[i].regmap,f_regmap[hr])>=0) break;
+                    if(get_reg(branch_regs[i].regmap,f_regmap[hr])>=0) break;
+					if(get_reg(regs[i+2].regmap,f_regmap[hr])>=0) break;
                     if(r>63) {
                       if(get_reg(regs[i].regmap,r&63)<0) break;
                       if(get_reg(branch_regs[i].regmap,r&63)<0) break;
