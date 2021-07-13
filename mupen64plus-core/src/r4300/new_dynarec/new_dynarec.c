@@ -1702,27 +1702,24 @@ static void load_alloc(struct regstat *current,int i)
   if(rt1[i]&&!((current->u>>rt1[i])&1)) {
     alloc_reg(current,i,rt1[i]);
     assert(get_reg(current->regmap,rt1[i])>=0);
-    if(opcode[i]==0x27||opcode[i]==0x37) // LWU/LD
+	if(opcode[i]==0x27||opcode[i]==0x37||opcode[i]==0x1A||opcode[i]==0x1B) // LWU/LD/LDL/LDR
     {
       current->is32&=~(1LL<<rt1[i]);
       alloc_reg64(current,i,rt1[i]);
-    }
-    else if(opcode[i]==0x1A||opcode[i]==0x1B) // LDL/LDR
-    {
-      current->is32&=~(1LL<<rt1[i]);
-      alloc_reg64(current,i,rt1[i]);
-      alloc_all(current,i);
-      alloc_reg64(current,i,FTEMP);
-      minimum_free_regs[i]=HOST_REGS;
     }
     else current->is32|=1LL<<rt1[i];
     dirty_reg(current,rt1[i]);
+	
+	if(opcode[i]==0x22||opcode[i]==0x26) // LWL/LWR
+      alloc_reg(current,i,FTEMP);
+    else if(opcode[i]==0x1A||opcode[i]==0x1B) // LDL/LDR
+      alloc_reg64(current,i,FTEMP);
+	  
     // If using TLB, need a register for pointer to the mapping table
     if(using_tlb) alloc_reg(current,i,TLREG);
-    // LWL/LWR need a temporary register for the old value
-    if(opcode[i]==0x22||opcode[i]==0x26)
-    {
-      alloc_reg(current,i,FTEMP);
+    
+	// LWU/LD/LDL/LDR need a temporary register
+    if(opcode[i]==0x22||opcode[i]==0x26||opcode[i]==0x1A||opcode[i]==0x1B) {
       alloc_reg_temp(current,i,-1);
       minimum_free_regs[i]=1;
     }
@@ -1739,12 +1736,6 @@ static void load_alloc(struct regstat *current,int i)
     if(using_tlb) alloc_reg(current,i,TLREG);
     alloc_reg_temp(current,i,-1);
     minimum_free_regs[i]=1;
-    if(opcode[i]==0x1A||opcode[i]==0x1B) // LDL/LDR
-    {
-      alloc_all(current,i);
-      alloc_reg64(current,i,FTEMP);
-      minimum_free_regs[i]=HOST_REGS;
-    }
   }
 }
 
