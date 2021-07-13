@@ -3024,14 +3024,6 @@ static void emit_cmov2imm_e_ne_compact(int imm1,int imm2,u_int rt)
 }
 #endif
 
-// special case for checking pending_exception
-static void emit_cmpmem_imm(intptr_t addr, int imm)
-{
-  assert(imm==0);
-  emit_readword(addr,HOST_TEMPREG);
-  emit_test(HOST_TEMPREG,HOST_TEMPREG);
-}
-
 #ifndef HOST_IMM8
 // special case for checking invalid_code
 static void emit_cmpmem_indexedsr12_imm(int addr,int r,int imm)
@@ -3863,6 +3855,331 @@ static void emit_extjump(intptr_t addr, int target)
 static void emit_extjump_ds(intptr_t addr, int target)
 {
   emit_extjump2(addr, target, (intptr_t)dynamic_linker_ds);
+}
+
+static void do_readstub(int n)
+{
+  assem_debug("do_readstub %x",start+stubs[n][3]*4);
+  literal_pool(256);
+  set_jump_target(stubs[n][1],(intptr_t)out);
+  int type=stubs[n][0];
+  int i=stubs[n][3];
+  int rs=stubs[n][4];
+  struct regstat *i_regs=(struct regstat *)stubs[n][5];
+  u_int reglist=stubs[n][7];
+  signed char *i_regmap=i_regs->regmap;
+  int addr=get_reg(i_regmap,AGEN1+(i&1));
+  int rth,rt;
+  int ds;
+  if(itype[i]==C1LS||itype[i]==LOADLR) {
+    rth=get_reg(i_regmap,FTEMP|64);
+    rt=get_reg(i_regmap,FTEMP);
+  }else{
+    rth=get_reg(i_regmap,rt1[i]|64);
+    rt=get_reg(i_regmap,rt1[i]);
+  }
+  assert(rs>=0);
+  if(addr<0) addr=rt;
+  if(addr<0&&itype[i]!=C1LS&&itype[i]!=LOADLR) addr=get_reg(i_regmap,-1);
+  assert(addr>=0);
+  intptr_t ftable=0;
+  if(type==LOADB_STUB||type==LOADBU_STUB)
+    ftable=(intptr_t)readmemb;
+  if(type==LOADH_STUB||type==LOADHU_STUB)
+    ftable=(intptr_t)readmemh;
+  if(type==LOADW_STUB)
+    ftable=(intptr_t)readmem;
+  if(type==LOADD_STUB)
+    ftable=(intptr_t)readmemd;
+  emit_writeword(rs,(intptr_t)&address);
+  //emit_pusha();
+  save_regs(reglist);
+  ds=i_regs!=&regs[i];
+  int real_rs=(itype[i]==LOADLR)?-1:get_reg(i_regmap,rs1[i]);
+  u_int cmask=ds?-1:(0x7ffff|~i_regs->wasconst);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,i);
+  wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,i);
+  emit_shrimm(rs,16,1);
+  int cc=get_reg(i_regmap,CCREG);
+  if(cc<0) {
+    emit_loadreg(CCREG,2);
+  }
+  emit_read_ptr(ftable,0);
+  emit_addimm(cc<0?2:cc,2*stubs[n][6]+2,2);
+  emit_movimm(start+stubs[n][3]*4+(((regs[i].was32>>rs1[i])&1)<<1)+ds,3);
+  //emit_readword((int)&last_count,temp);
+  //emit_add(cc,temp,cc);
+  //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
+  //emit_mov(15,14);
+  emit_call((intptr_t)&indirect_jump_indexed);
+  //emit_callreg(rs);
+  //emit_readword_dualindexedx4(rs,HOST_TEMPREG,15);
+  // We really shouldn't need to update the count here,
+  // but not doing so causes random crashes...
+  emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
+  emit_readword((intptr_t)&next_interupt,2);
+  emit_addimm(HOST_TEMPREG,-2*stubs[n][6]-2,HOST_TEMPREG);
+  emit_writeword(2,(intptr_t)&last_count);
+  emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
+  if(cc<0) {
+    emit_storereg(CCREG,HOST_TEMPREG);
+  }
+  //emit_popa();
+  restore_regs(reglist);
+  //if((cc=get_reg(regmap,CCREG))>=0) {
+  //  emit_loadreg(CCREG,cc);
+  //}
+  if(rt>=0) {
+    if(type==LOADB_STUB)
+      emit_movsbl((intptr_t)&readmem_dword,rt);
+    if(type==LOADBU_STUB)
+      emit_movzbl((intptr_t)&readmem_dword,rt);
+    if(type==LOADH_STUB)
+      emit_movswl((intptr_t)&readmem_dword,rt);
+    if(type==LOADHU_STUB)
+      emit_movzwl((intptr_t)&readmem_dword,rt);
+    if(type==LOADW_STUB)
+      emit_readword((intptr_t)&readmem_dword,rt);
+    if(type==LOADD_STUB) {
+      emit_readword((intptr_t)&readmem_dword,rt);
+      if(rth>=0) emit_readword(((intptr_t)&readmem_dword)+4,rth);
+    }
+  }
+  emit_jmp(stubs[n][2]); // return address
+}
+
+static void inline_readstub(int type, int i, u_int addr, signed char regmap[], int target, int adj, u_int reglist)
+{
+  int rs=get_reg(regmap,target);
+  int rth=get_reg(regmap,target|64);
+  int rt=get_reg(regmap,target);
+  if(rs<0) rs=get_reg(regmap,-1);
+  assert(rs>=0);
+  intptr_t ftable=0;
+  if(type==LOADB_STUB||type==LOADBU_STUB)
+    ftable=(intptr_t)readmemb;
+  if(type==LOADH_STUB||type==LOADHU_STUB)
+    ftable=(intptr_t)readmemh;
+  if(type==LOADW_STUB)
+    ftable=(intptr_t)readmem;
+  if(type==LOADD_STUB)
+    ftable=(intptr_t)readmemd;
+  emit_writeword(rs,(intptr_t)&address);
+  //emit_pusha();
+  save_regs(reglist);
+  if((signed int)addr>=(signed int)0xC0000000) {
+    // Theoretically we can have a pagefault here, if the TLB has never
+    // been enabled and the address is outside the range 80000000..BFFFFFFF
+    // Write out the registers so the pagefault can be handled.  This is
+    // a very rare case and likely represents a bug.
+    int ds=regmap!=regs[i].regmap;
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
+    else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
+  }
+  //emit_shrimm(rs,16,1);
+  int cc=get_reg(regmap,CCREG);
+  if(cc<0) {
+    emit_loadreg(CCREG,2);
+  }
+  //emit_movimm(ftable,0);
+  emit_read_ptr(((uintptr_t *)ftable)[addr>>16],0);
+  //emit_readword((int)&last_count,12);
+  emit_addimm(cc<0?2:cc,CLOCK_DIVIDER*(adj+1),2);
+  if((signed int)addr>=(signed int)0xC0000000) {
+    // Pagefault address
+    int ds=regmap!=regs[i].regmap;
+    emit_movimm(start+i*4+(((regs[i].was32>>rs1[i])&1)<<1)+ds,3);
+  }
+  //emit_add(12,2,2);
+  //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
+  //emit_call(((u_int *)ftable)[addr>>16]);
+  emit_call((intptr_t)&indirect_jump);
+  // We really shouldn't need to update the count here,
+  // but not doing so causes random crashes...
+  emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
+  emit_readword((intptr_t)&next_interupt,2);
+  emit_addimm(HOST_TEMPREG,-(int)CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
+  emit_writeword(2,(intptr_t)&last_count);
+  emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
+  if(cc<0) {
+    emit_storereg(CCREG,HOST_TEMPREG);
+  }
+  //emit_popa();
+  restore_regs(reglist);
+  if(rt>=0) {
+    if(type==LOADB_STUB)
+      emit_movsbl((intptr_t)&readmem_dword,rt);
+    if(type==LOADBU_STUB)
+      emit_movzbl((intptr_t)&readmem_dword,rt);
+    if(type==LOADH_STUB)
+      emit_movswl((intptr_t)&readmem_dword,rt);
+    if(type==LOADHU_STUB)
+      emit_movzwl((intptr_t)&readmem_dword,rt);
+    if(type==LOADW_STUB)
+      emit_readword((intptr_t)&readmem_dword,rt);
+    if(type==LOADD_STUB) {
+      emit_readword((intptr_t)&readmem_dword,rt);
+      if(rth>=0) emit_readword(((intptr_t)&readmem_dword)+4,rth);
+    }
+  }
+}
+
+static void do_writestub(int n)
+{
+  assem_debug("do_writestub %x",start+stubs[n][3]*4);
+  literal_pool(256);
+  set_jump_target(stubs[n][1],(intptr_t)out);
+  int type=stubs[n][0];
+  int i=stubs[n][3];
+  int rs=stubs[n][4];
+  struct regstat *i_regs=(struct regstat *)stubs[n][5];
+  u_int reglist=stubs[n][7];
+  signed char *i_regmap=i_regs->regmap;
+  int addr=get_reg(i_regmap,AGEN1+(i&1));
+  int rth,rt,r;
+  int ds;
+  if(itype[i]==C1LS) {
+    rth=get_reg(i_regmap,FTEMP|64);
+    rt=get_reg(i_regmap,r=FTEMP);
+  }else{
+    rth=get_reg(i_regmap,rs2[i]|64);
+    rt=get_reg(i_regmap,r=rs2[i]);
+  }
+  assert(rs>=0);
+  assert(rt>=0);
+  if(addr<0) addr=get_reg(i_regmap,-1);
+  assert(addr>=0);
+  intptr_t ftable=0;
+  if(type==STOREB_STUB)
+    ftable=(intptr_t)writememb;
+  if(type==STOREH_STUB)
+    ftable=(intptr_t)writememh;
+  if(type==STOREW_STUB)
+    ftable=(intptr_t)writemem;
+  if(type==STORED_STUB)
+    ftable=(intptr_t)writememd;
+  emit_writeword(rs,(intptr_t)&address);
+  //emit_shrimm(rs,16,rs);
+  //emit_movmem_indexedx4(ftable,rs,rs);
+  if(type==STOREB_STUB)
+    emit_writebyte(rt,(intptr_t)&cpu_byte);
+  if(type==STOREH_STUB)
+    emit_writehword(rt,(intptr_t)&cpu_hword);
+  if(type==STOREW_STUB)
+    emit_writeword(rt,(intptr_t)&cpu_word);
+  if(type==STORED_STUB) {
+    emit_writeword(rt,(intptr_t)&cpu_dword);
+    emit_writeword(r?rth:rt,(intptr_t)&cpu_dword+4);
+  }
+  //emit_pusha();
+  save_regs(reglist);
+  ds=i_regs!=&regs[i];
+  int real_rs=get_reg(i_regmap,rs1[i]);
+  u_int cmask=ds?-1:(0x7ffff|~i_regs->wasconst);
+  if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&0x7ffff,i);
+  wb_dirtys(i_regs->regmap_entry,i_regs->was32,i_regs->wasdirty&cmask&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs)));
+  if(!ds) wb_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty&~(1<<addr)&(real_rs<0?-1:~(1<<real_rs))&~0x7ffff,i);
+  emit_shrimm(rs,16,1);
+  int cc=get_reg(i_regmap,CCREG);
+  if(cc<0) {
+    emit_loadreg(CCREG,2);
+  }
+  emit_read_ptr(ftable,0);
+  emit_addimm(cc<0?2:cc,2*stubs[n][6]+2,2);
+  emit_movimm(start+stubs[n][3]*4+(((regs[i].was32>>rs1[i])&1)<<1)+ds,3);
+  //emit_readword((int)&last_count,temp);
+  //emit_addimm(cc,2*stubs[n][5]+2,cc);
+  //emit_add(cc,temp,cc);
+  //emit_writeword(cc,(int)&g_cp0_regs[CP0_COUNT_REG]);
+  emit_call((intptr_t)&indirect_jump_indexed);
+  //emit_callreg(rs);
+  emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
+  emit_readword((intptr_t)&next_interupt,2);
+  emit_addimm(HOST_TEMPREG,-2*stubs[n][6]-2,HOST_TEMPREG);
+  emit_writeword(2,(intptr_t)&last_count);
+  emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
+  if(cc<0) {
+    emit_storereg(CCREG,HOST_TEMPREG);
+  }
+  //emit_popa();
+  restore_regs(reglist);
+  //if((cc=get_reg(regmap,CCREG))>=0) {
+  //  emit_loadreg(CCREG,cc);
+  //}
+  emit_jmp(stubs[n][2]); // return address
+}
+
+static void inline_writestub(int type, int i, u_int addr, signed char regmap[], int target, int adj, u_int reglist)
+{
+  int rs=get_reg(regmap,-1);
+  int rth=get_reg(regmap,target|64);
+  int rt=get_reg(regmap,target);
+  assert(rs>=0);
+  assert(rt>=0);
+  intptr_t ftable=0;
+  if(type==STOREB_STUB)
+    ftable=(intptr_t)writememb;
+  if(type==STOREH_STUB)
+    ftable=(intptr_t)writememh;
+  if(type==STOREW_STUB)
+    ftable=(intptr_t)writemem;
+  if(type==STORED_STUB)
+    ftable=(intptr_t)writememd;
+  emit_writeword(rs,(intptr_t)&address);
+  //emit_shrimm(rs,16,rs);
+  //emit_movmem_indexedx4(ftable,rs,rs);
+  if(type==STOREB_STUB)
+    emit_writebyte(rt,(intptr_t)&cpu_byte);
+  if(type==STOREH_STUB)
+    emit_writehword(rt,(intptr_t)&cpu_hword);
+  if(type==STOREW_STUB)
+    emit_writeword(rt,(intptr_t)&cpu_word);
+  if(type==STORED_STUB) {
+    emit_writeword(rt,(intptr_t)&cpu_dword);
+    emit_writeword(target?rth:rt,(intptr_t)&cpu_dword+4);
+  }
+  //emit_pusha();
+  save_regs(reglist);
+  if((signed int)addr>=(signed int)0xC0000000) {
+    // Theoretically we can have a pagefault here, if the TLB has never
+    // been enabled and the address is outside the range 80000000..BFFFFFFF
+    // Write out the registers so the pagefault can be handled.  This is
+    // a very rare case and likely represents a bug.
+    int ds=regmap!=regs[i].regmap;
+    if(!ds) load_all_consts(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty,i);
+    if(!ds) wb_dirtys(regs[i].regmap_entry,regs[i].was32,regs[i].wasdirty);
+    else wb_dirtys(branch_regs[i-1].regmap_entry,branch_regs[i-1].was32,branch_regs[i-1].wasdirty);
+  }
+  //emit_shrimm(rs,16,1);
+  int cc=get_reg(regmap,CCREG);
+  if(cc<0) {
+    emit_loadreg(CCREG,2);
+  }
+  //emit_movimm(ftable,0);
+  emit_read_ptr(((uintptr_t *)ftable)[addr>>16],0);
+  //emit_readword((int)&last_count,12);
+  emit_addimm(cc<0?2:cc,CLOCK_DIVIDER*(adj+1),2);
+  if((signed int)addr>=(signed int)0xC0000000) {
+    // Pagefault address
+    int ds=regmap!=regs[i].regmap;
+    emit_movimm(start+i*4+(((regs[i].was32>>rs1[i])&1)<<1)+ds,3);
+  }
+  //emit_add(12,2,2);
+  //emit_writeword(2,(int)&g_cp0_regs[CP0_COUNT_REG]);
+  //emit_call(((u_int *)ftable)[addr>>16]);
+  emit_call((intptr_t)&indirect_jump);
+  emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_TEMPREG);
+  emit_readword((intptr_t)&next_interupt,2);
+  emit_addimm(HOST_TEMPREG,-(int)CLOCK_DIVIDER*(adj+1),HOST_TEMPREG);
+  emit_writeword(2,(intptr_t)&last_count);
+  emit_sub(HOST_TEMPREG,2,cc<0?HOST_TEMPREG:cc);
+  if(cc<0) {
+    emit_storereg(CCREG,HOST_TEMPREG);
+  }
+  //emit_popa();
+  restore_regs(reglist);
 }
 
 static void do_unalignedwritestub(int n)
@@ -5035,6 +5352,112 @@ static void storelr_assemble_arm64(int i,struct regstat *i_regs)
   */
 }
 #define storelr_assemble storelr_assemble_arm64
+
+static void cop0_assemble(int i,struct regstat *i_regs)
+{
+  if(opcode2[i]==0) // MFC0
+  {
+    if(rt1[i]) {
+      signed char t=get_reg(i_regs->regmap,rt1[i]);
+      char copr=(source[i]>>11)&0x1f;
+      if(t>=0) {
+        emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
+        emit_movimm((source[i]>>11)&0x1f,1);
+        emit_writeword64(0,(intptr_t)&PC);
+        emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
+        if(copr==9) {
+          emit_readword((intptr_t)&last_count,ECX);
+          emit_loadreg(CCREG,HOST_CCREG); // TODO: do proper reg alloc
+          emit_add(HOST_CCREG,ECX,HOST_CCREG);
+          emit_addimm(HOST_CCREG,CLOCK_DIVIDER*ccadj[i],HOST_CCREG);
+          emit_writeword(HOST_CCREG,(intptr_t)&g_cp0_regs[CP0_COUNT_REG]);
+        }
+        emit_call((intptr_t)cached_interpreter_table.MFC0);
+        emit_readword((intptr_t)&readmem_dword,t);
+      }
+    }
+  }
+  else if(opcode2[i]==4) // MTC0
+  {
+    signed char s=get_reg(i_regs->regmap,rs1[i]);
+    char copr=(source[i]>>11)&0x1f;
+    assert(s>=0);
+    emit_writeword(s,(intptr_t)&readmem_dword);
+    wb_register(rs1[i],i_regs->regmap,i_regs->dirty,i_regs->is32);
+    emit_addimm64(FP,(intptr_t)&fake_pc-(intptr_t)&dynarec_local,0);
+    emit_movimm((source[i]>>11)&0x1f,1);
+    emit_writeword64(0,(intptr_t)&PC);
+    emit_writebyte(1,(intptr_t)&(fake_pc.f.r.nrd));
+    if(copr==9||copr==11||copr==12) {
+      emit_readword((intptr_t)&last_count,ECX);
+      emit_loadreg(CCREG,HOST_CCREG); // TODO: do proper reg alloc
+      emit_add(HOST_CCREG,ECX,HOST_CCREG);
+      emit_addimm(HOST_CCREG,CLOCK_DIVIDER*ccadj[i],HOST_CCREG);
+      emit_writeword(HOST_CCREG,(intptr_t)&g_cp0_regs[CP0_COUNT_REG]);
+    }
+    // What a mess.  The status register (12) can enable interrupts,
+    // so needs a special case to handle a pending interrupt.
+    // The interrupt must be taken immediately, because a subsequent
+    // instruction might disable interrupts again.
+    if(copr==12&&!is_delayslot) {
+      emit_movimm(start+i*4+4,0);
+      emit_movimm(0,1);
+      emit_writeword(0,(intptr_t)&pcaddr);
+      emit_writeword(1,(intptr_t)&pending_exception);
+    }
+    //else if(copr==12&&is_delayslot) emit_call((int)MTC0_R12);
+    //else
+    emit_call((intptr_t)cached_interpreter_table.MTC0);
+    if(copr==9||copr==11||copr==12) {
+      emit_readword((intptr_t)&g_cp0_regs[CP0_COUNT_REG],HOST_CCREG);
+      emit_readword((intptr_t)&next_interupt,ECX);
+      emit_addimm(HOST_CCREG,-(int)CLOCK_DIVIDER*ccadj[i],HOST_CCREG);
+      emit_sub(HOST_CCREG,ECX,HOST_CCREG);
+      emit_writeword(ECX,(intptr_t)&last_count);
+      emit_storereg(CCREG,HOST_CCREG);
+    }
+    if(copr==12) {
+      assert(!is_delayslot);
+      emit_readword((intptr_t)&pending_exception,HOST_TEMPREG);
+    }
+    emit_loadreg(rs1[i],s);
+    if(get_reg(i_regs->regmap,rs1[i]|64)>=0)
+      emit_loadreg(rs1[i]|64,get_reg(i_regs->regmap,rs1[i]|64));
+    if(copr==12) {
+      emit_test(HOST_TEMPREG,HOST_TEMPREG);
+      emit_jeq((intptr_t)out+8);
+      emit_jmp((intptr_t)&do_interrupt);
+    }
+    cop1_usable=0;
+  }
+  else
+  {
+    assert(opcode2[i]==0x10);
+    if((source[i]&0x3f)==0x01) // TLBR
+      emit_call((intptr_t)cached_interpreter_table.TLBR);
+    if((source[i]&0x3f)==0x02) // TLBWI
+      emit_call((intptr_t)TLBWI_new);
+    if((source[i]&0x3f)==0x06) { // TLBWR
+      // The TLB entry written by TLBWR is dependent on the count,
+      // so update the cycle count
+      emit_readword((intptr_t)&last_count,ECX);
+      if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
+      emit_add(HOST_CCREG,ECX,HOST_CCREG);
+      emit_addimm(HOST_CCREG,CLOCK_DIVIDER*ccadj[i],HOST_CCREG);
+      emit_writeword(HOST_CCREG,(intptr_t)&g_cp0_regs[CP0_COUNT_REG]);
+      emit_call((intptr_t)TLBWR_new);
+    }
+    if((source[i]&0x3f)==0x08) // TLBP
+      emit_call((intptr_t)cached_interpreter_table.TLBP);
+    if((source[i]&0x3f)==0x18) // ERET
+    {
+      int count=ccadj[i];
+      if(i_regs->regmap[HOST_CCREG]!=CCREG) emit_loadreg(CCREG,HOST_CCREG);
+      emit_addimm(HOST_CCREG,CLOCK_DIVIDER*count,HOST_CCREG); // TODO: Should there be an extra cycle here?
+      emit_jmp((intptr_t)jump_eret);
+    }
+  }
+}
 
 static void cop1_assemble(int i,struct regstat *i_regs)
 {
