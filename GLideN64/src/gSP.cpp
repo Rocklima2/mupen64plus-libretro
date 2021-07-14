@@ -588,6 +588,14 @@ void gSPProcessVertex(u32 v)
 				y = fLightDir[1];
 			}
 			if (gSP.geometryMode & G_TEXTURE_GEN_LINEAR) {
+				if (x < -1.0f) 
+					x = -1.0f;
+				else if (x > 1.0f) 
+					x = 1.0f;
+				if (y < -1.0f) 
+					y = -1.0f;
+				else if (y > 1.0f) 
+					y = 1.0f;
 				vtx.s = acosf(-x) * 325.94931f;
 				vtx.t = acosf(-y) * 325.94931f;
 			} else { // G_TEXTURE_GEN
