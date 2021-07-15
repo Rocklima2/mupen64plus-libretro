@@ -207,7 +207,7 @@ static void setup_variables(void)
         {"mupen64plus-astick-deadzone",
            "Analog Deadzone (percent); 15|20|25|30|0|5|10"},
         {"mupen64plus-astick-sensitivity",
-		   "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|200|50|55|60|65|70|75|80|85|90|95"},
+           "Analog Sensitivity (percent); 100|105|110|115|120|125|130|135|140|145|150|200|50|55|60|65|70|75|80|85|90|95"},
         {"mupen64plus-r-cbutton",
            "Right C Button; C1|C2|C3|C4"},
         {"mupen64plus-l-cbutton",
