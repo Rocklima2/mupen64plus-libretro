@@ -31,7 +31,7 @@ struct cart_rom
     size_t rom_size;
 
     uint32_t last_write;
-	uint32_t rom_written;
+    uint32_t rom_written;
 };
 
 static uint32_t rom_address(uint32_t address)
