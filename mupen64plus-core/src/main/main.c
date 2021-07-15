@@ -776,6 +776,10 @@ static void apply_speed_limiter(void)
 
        SDL_Delay((int) sleepTime);
     }
+	
+	// Discard frames with excessive execution time
+    if (ThisFrameDelta > AdjustedLimit * 3)
+    	ThisFrameDelta = 0.f;
 
     timed_section_end(TIMED_SECTION_IDLE);
 }
