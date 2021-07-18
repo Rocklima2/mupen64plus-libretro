@@ -9,7 +9,6 @@
 #include "RSP.h"
 #include "RDP.h"
 #include "Types.h"
-#include "Log.h"
 
 void S2DEX_BG_1Cyc( u32 w0, u32 w1 )
 {
@@ -48,7 +47,7 @@ void S2DEX_Obj_MoveMem( u32 w0, u32 w1 )
 
 void S2DEX_MoveWord( u32 w0, u32 w1 )
 {
-	switch (_SHIFTR( w0, 16, 8 ))
+	switch (_SHIFTR( w0, 0, 8 ))
 	{
 	case G_MW_GENSTAT:
 		gSPSetStatus(_SHIFTR(w0, 0, 16), w1);
@@ -113,7 +112,8 @@ void S2DEX_Obj_LoadTxtr( u32 w0, u32 w1 )
 
 void S2DEX_Obj_LdTx_Sprite( u32 w0, u32 w1 )
 {
-	gSPObjLoadTxSprite( w1 );
+	gSPObjLoadTxtr(w1);
+	gSPObjSprite(w1 + sizeof(uObjTxtr));
 }
 
 void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
@@ -123,7 +123,8 @@ void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
 
 void S2DEX_Obj_LdTx_Rect_R( u32 w0, u32 w1 )
 {
-	gSPObjLoadTxRectR( w1 );
+	gSPObjLoadTxtr(w1);
+	gSPObjRectangle(w1 + sizeof(uObjTxtr));
 }
 
 void S2DEX_Init()

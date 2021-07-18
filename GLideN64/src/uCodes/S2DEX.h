@@ -1,19 +1,30 @@
 #ifndef S2DEX_H
 #define S2DEX_H
 
+// BG flags
 #define	G_BGLT_LOADBLOCK		0x0033
 #define	G_BGLT_LOADTILE			0xfff4
 
 #define	G_BG_FLAG_FLIPS			0x01
 #define	G_BG_FLAG_FLIPT			0x10
 
+// Sprite object render modes
 #define	G_OBJRM_NOTXCLAMP		0x01
-#define	G_OBJRM_XLU				0x02
-#define	G_OBJRM_ANTIALIAS		0x04
+#define	G_OBJRM_XLU			0x02     /* Ignored */
+#define	G_OBJRM_ANTIALIAS		0x04     /* Ignored */
 #define	G_OBJRM_BILERP			0x08
-#define	G_OBJRM_SHRINKSIZE_1	0x10
-#define	G_OBJRM_SHRINKSIZE_2	0x20
+#define	G_OBJRM_SHRINKSIZE_1		0x10
+#define	G_OBJRM_SHRINKSIZE_2		0x20
 #define	G_OBJRM_WIDEN			0x40
+
+// Sprite texture loading types
+#define	G_OBJLT_TXTRBLOCK	0x00001033
+#define	G_OBJLT_TXTRTILE	0x00fc1034
+#define	G_OBJLT_TLUT		0x00000030
+
+// Tile indices
+#define G_TX_LOADTILE			0x07
+#define G_TX_RENDERTILE			0x00
 
 struct uObjScaleBg
 {
@@ -194,12 +205,12 @@ void S2DEX_Init();
 #define	S2DEX_OBJ_MOVEMEM		0x05
 #define S2DEX_LOAD_UCODE		0xAF
 #define	S2DEX_SELECT_DL			0xB0
-#define	S2DEX_OBJ_RENDERMODE	0xB1
-#define	S2DEX_OBJ_RECTANGLE_R	0xB2
+#define	S2DEX_OBJ_RENDERMODE		0xB1
+#define	S2DEX_OBJ_RECTANGLE_R		0xB2
 #define	S2DEX_OBJ_LOADTXTR		0xC1
-#define	S2DEX_OBJ_LDTX_SPRITE	0xC2
+#define	S2DEX_OBJ_LDTX_SPRITE		0xC2
 #define	S2DEX_OBJ_LDTX_RECT		0xC3
-#define	S2DEX_OBJ_LDTX_RECT_R	0xC4
+#define	S2DEX_OBJ_LDTX_RECT_R		0xC4
 #define	S2DEX_RDPHALF_0			0xE4
 
 #endif
