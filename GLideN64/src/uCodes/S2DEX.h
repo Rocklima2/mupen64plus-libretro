@@ -10,11 +10,11 @@
 
 // Sprite object render modes
 #define	G_OBJRM_NOTXCLAMP		0x01
-#define	G_OBJRM_XLU				0x02     /* Ignored */
+#define	G_OBJRM_XLU			0x02     /* Ignored */
 #define	G_OBJRM_ANTIALIAS		0x04     /* Ignored */
 #define	G_OBJRM_BILERP			0x08
-#define	G_OBJRM_SHRINKSIZE_1	0x10
-#define	G_OBJRM_SHRINKSIZE_2	0x20
+#define	G_OBJRM_SHRINKSIZE_1		0x10
+#define	G_OBJRM_SHRINKSIZE_2		0x20
 #define	G_OBJRM_WIDEN			0x40
 
 // Sprite texture loading types
@@ -205,12 +205,12 @@ void S2DEX_Init();
 #define	S2DEX_OBJ_MOVEMEM		0x05
 #define S2DEX_LOAD_UCODE		0xAF
 #define	S2DEX_SELECT_DL			0xB0
-#define	S2DEX_OBJ_RENDERMODE	0xB1
-#define	S2DEX_OBJ_RECTANGLE_R	0xB2
+#define	S2DEX_OBJ_RENDERMODE		0xB1
+#define	S2DEX_OBJ_RECTANGLE_R		0xB2
 #define	S2DEX_OBJ_LOADTXTR		0xC1
-#define	S2DEX_OBJ_LDTX_SPRITE	0xC2
+#define	S2DEX_OBJ_LDTX_SPRITE		0xC2
 #define	S2DEX_OBJ_LDTX_RECT		0xC3
-#define	S2DEX_OBJ_LDTX_RECT_R	0xC4
+#define	S2DEX_OBJ_LDTX_RECT_R		0xC4
 #define	S2DEX_RDPHALF_0			0xE4
 
 #endif
