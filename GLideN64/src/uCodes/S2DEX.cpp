@@ -112,8 +112,7 @@ void S2DEX_Obj_LoadTxtr( u32 w0, u32 w1 )
 
 void S2DEX_Obj_LdTx_Sprite( u32 w0, u32 w1 )
 {
-	gSPObjLoadTxtr(w1);
-	gSPObjSprite(w1 + sizeof(uObjTxtr));
+	gSPObjLoadTxSprite( w1 );
 }
 
 void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
@@ -123,8 +122,7 @@ void S2DEX_Obj_LdTx_Rect( u32 w0, u32 w1 )
 
 void S2DEX_Obj_LdTx_Rect_R( u32 w0, u32 w1 )
 {
-	gSPObjLoadTxtr(w1);
-	gSPObjRectangle(w1 + sizeof(uObjTxtr));
+	gSPObjLoadTxRectR( w1 );
 }
 
 void S2DEX_Init()
